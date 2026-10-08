@@ -6,6 +6,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EntityType;
@@ -45,7 +47,9 @@ public final class Freecam {
         x = eye.x; y = eye.y; z = eye.z;
         yaw = p.getYRot(); pitch = p.getXRot();
         bodyYaw = yaw; bodyPitch = pitch;
-        cam = new Marker(EntityType.MARKER, mc.level);
+        EntityType<?> markerType = BuiltInRegistries.ENTITY_TYPE
+                .getOptional(Identifier.fromNamespaceAndPath("minecraft", "marker")).orElseThrow();
+        cam = new Marker(markerType, mc.level);
         applyCam();
         mc.setCameraEntity(cam);
         lastNanos = System.nanoTime();

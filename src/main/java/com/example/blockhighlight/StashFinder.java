@@ -24,7 +24,8 @@ public final class StashFinder {
     enum Kind {
         STASH("STASH FOUND", 0xFFFF5555, "containers"),
         BASE("BASE FOUND", 0xFFFFAA00, "base blocks"),
-        FARM("FARM FOUND", 0xFF55FF55, "hoppers");
+        FARM("FARM FOUND", 0xFF55FF55, "hoppers"),
+        SUS("SUS CHUNK", 0xFFFF2020, "points");
         final String title; final int color; final String unit;
         Kind(String t, int c, String u) { title = t; color = c; unit = u; }
     }
@@ -97,7 +98,11 @@ public final class StashFinder {
             if (d < bd) { bd = d; best = p; }
         }
 
-        Alert a = new Alert(kind, best.getX(), best.getY(), best.getZ(), list.size(), System.currentTimeMillis());
+        push(mc, kind, best, list.size());
+    }
+
+    static void push(Minecraft mc, Kind kind, BlockPos p, int count) {
+        Alert a = new Alert(kind, p.getX(), p.getY(), p.getZ(), count, System.currentTimeMillis());
         alerts.add(0, a);
         mc.player.sendSystemMessage(Component.literal(kind.title + " at " + a.x() + " " + a.y() + " " + a.z()
                 + " (" + a.count() + " " + kind.unit + ")"));

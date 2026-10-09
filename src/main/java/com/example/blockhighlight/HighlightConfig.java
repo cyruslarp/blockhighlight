@@ -30,6 +30,11 @@ public class HighlightConfig {
     public int staffY = 30;  // % down the screen
     public String staffNames = "";
     public String staffKeywords = "admin,owner,mod,moderator,helper,staff,op,manager,dev";
+    public boolean susChunks = true;
+    public int susThreshold = 12;
+    public boolean susGeodes = false;
+    public boolean fullbrightFreecam = true;
+    public boolean fullbrightAlways = false;
     public int stashMin = 8;      // containers in one chunk to count as a stash
     public Set<String> blocks = new LinkedHashSet<>(Set.of(
             "minecraft:diamond_ore", "minecraft:deepslate_diamond_ore", "minecraft:ancient_debris"));

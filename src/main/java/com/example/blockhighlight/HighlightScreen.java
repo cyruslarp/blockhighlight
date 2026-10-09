@@ -74,6 +74,9 @@ public class HighlightScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Staff watch settings..."),
                 b -> minecraft.gui.setScreen(new StaffScreen(this))).bounds(rightX, pagerY + 24, 200, 20).build());
 
+        addRenderableWidget(Button.builder(Component.literal("Sus chunks & light settings..."),
+                b -> minecraft.gui.setScreen(new SusScreen(this))).bounds(rightX, pagerY + 48, 200, 20).build());
+
         refreshResults();
     }
 

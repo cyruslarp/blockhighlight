@@ -49,7 +49,8 @@ public class BlockHighlightClient implements ClientModInitializer {
 
     record Hit(int x, int y, int z, int rgb) {}
     /** Immutable snapshot used by the draw phase. */
-    record RenderState(List<Hit> hits, boolean fill, boolean outline, float alpha) {}
+    record RenderState(List<Hit> hits, boolean fill, boolean outline, float alpha,
+                       List<SusChunks.Sus> sus, float minY, float maxY) {}
 
     private static final int BUFFER_SIZE = 8 * 1024 * 1024;
     private static final int VERTEX_BYTES = 16;
@@ -93,6 +94,8 @@ public class BlockHighlightClient implements ClientModInitializer {
                     mc.player.sendSystemMessage(Component.literal("Block Highlight: " + (cfg.enabled ? "ON" : "OFF")));
             }
             StashFinder.tick(mc);
+            SusChunks.tick(mc);
+            Fullbright.tick(mc);
             StaffWatch.tick(mc);
             while (freecamKey.consumeClick()) Freecam.toggle(mc);
             while (menuKey.consumeClick()) mc.gui.setScreen(new HighlightScreen());
@@ -146,7 +149,7 @@ public class BlockHighlightClient implements ClientModInitializer {
 
         // keep the nearest ones if there are too many for the vertex buffer
         int perHit = (cfg.fill ? 24 : 0) + (cfg.outline ? 12 * 24 : 0);
-        int maxHits = perHit == 0 ? 0 : (int) (BUFFER_SIZE / (double) VERTEX_BYTES / perHit * 0.9);
+        int maxHits = perHit == 0 ? 0 : (int) ((BUFFER_SIZE / (double) VERTEX_BYTES - 8000) / perHit * 0.9);
         if (out.size() > maxHits) {
             out.sort(Comparator.comparingDouble(h -> c.distSqr(new BlockPos(h.x(), h.y(), h.z()))));
             out = new ArrayList<>(out.subList(0, maxHits));
@@ -158,19 +161,23 @@ public class BlockHighlightClient implements ClientModInitializer {
 
     private void extract(LevelExtractionContext context) {
         HighlightConfig cfg = HighlightConfig.INSTANCE;
-        List<Hit> list = hits;
-        if (!cfg.enabled || list.isEmpty() || (!cfg.fill && !cfg.outline)) {
+        List<Hit> list = cfg.enabled ? hits : List.of();
+        List<SusChunks.Sus> sus = cfg.susChunks ? SusChunks.drawList() : List.of();
+        boolean blocks = !list.isEmpty() && (cfg.fill || cfg.outline);
+        Minecraft mc = Minecraft.getInstance();
+        if ((!blocks && sus.isEmpty()) || mc.level == null) {
             renderState = null;
             return;
         }
-        renderState = new RenderState(list, cfg.fill, cfg.outline, Math.max(0.02f, cfg.opacity / 100f));
+        renderState = new RenderState(blocks ? list : List.of(), cfg.fill, cfg.outline,
+                Math.max(0.02f, cfg.opacity / 100f), sus, mc.level.getMinY(), mc.level.getMaxY() + 1);
     }
 
     // ---------- drawing phase ----------
 
     private void renderAndDraw(LevelRenderContext context) {
         RenderState state = this.renderState;
-        if (state == null || state.hits().isEmpty()) return;
+        if (state == null || (state.hits().isEmpty() && state.sus().isEmpty())) return;
 
         RenderPipeline pipeline = THROUGH_WALLS;
         VertexFormat formatBinding = pipeline.getVertexFormatBinding(0);
@@ -194,6 +201,20 @@ public class BlockHighlightClient implements ClientModInitializer {
                 box(m, builder, h.x() - e, h.y() - e, h.z() - e, h.x() + 1 + e, h.y() + 1 + e, h.z() + 1 + e, r, g, b, state.alpha());
             }
             if (state.outline()) edges(m, builder, h.x(), h.y(), h.z(), r, g, b);
+        }
+
+        for (SusChunks.Sus sc : state.sus()) {
+            float x0 = sc.cx() * 16f, z0 = sc.cz() * 16f, x1 = x0 + 16f, z1 = z0 + 16f;
+            float py = (float) Math.floor(camera.y);
+            box(m, builder, x0, py, z0, x1, py + 0.05f, z1, 1f, 0.1f, 0.1f, 0.25f);
+            float t = 0.2f;
+            float[] cxs = {x0, x1}, czs = {z0, z1};
+            for (float cx : cxs)
+                for (float cz : czs)
+                    box(m, builder, cx - t, state.minY(), cz - t, cx + t, state.maxY(), cz + t, 1f, 0.1f, 0.1f, 0.7f);
+            BlockPos bp = sc.pos();
+            box(m, builder, bp.getX() - 0.05f, bp.getY() - 0.05f, bp.getZ() - 0.05f,
+                    bp.getX() + 1.05f, bp.getY() + 1.05f, bp.getZ() + 1.05f, 1f, 0.1f, 0.1f, 0.6f);
         }
         matrices.popPose();
 
